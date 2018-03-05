@@ -29,6 +29,7 @@ def shorten_revision(long_revision):
 
 def update_info_file():
     with open(OUTFILE, "w"): pass  # clear the file
+
     for (user, channels) in USERS.items():
         for (name, channel) in channels.items():
             print(user, name, channel)
@@ -39,16 +40,19 @@ def update_info_file():
 
             url = URL_PAT.format(channel=channel)
 
+            localTimestamp = None
             for _ in range(100):
                 try:
                     with urlopen(url) as f:
                         for line in f:
                             line = line.decode("UTF8").strip()
                             latestRevision, latestTimestamp = line.split()
+
+                            latestRevision = shorten_revision(latestRevision)
                             latestTimestamp = datetime.fromtimestamp(int(latestTimestamp))
 
-                            if localRevision == shorten_revision(latestRevision):
-                                print(localRevision, latestTimestamp)
+                            if localRevision == latestRevision:
+                                print(latestRevision, latestTimestamp)
                                 localTimestamp = latestTimestamp
                 except URLError as e:
                     print(e)
@@ -59,10 +63,13 @@ def update_info_file():
                 return
 
             with open(OUTFILE, "a") as outfile:
-                if localTimestamp < latestTimestamp:
+                if localTimestamp is None:
+                    outfile.write("Failure to get channel info, there might be updates.\n")
+
+                elif localTimestamp < latestTimestamp:
                     message = [
                         f"Channel {channel} ({name}) for {user} is out-of-date.",
-                        f"Latest revision is {shorten_revision(latestRevision)}, "
+                        f"Latest revision is {latestRevision}, "
                         f"from {latestTimestamp}."
                     ]
 
